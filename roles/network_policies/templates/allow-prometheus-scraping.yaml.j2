@@ -1,0 +1,32 @@
+# {{ ansible_managed }}
+# Allow Prometheus (monitoring namespace) to scrape metrics from all protected namespaces
+{% for ns in network_policies_namespaces %}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: {{ ns }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8443
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 9091
+        - protocol: TCP
+          port: 9100
+        - protocol: TCP
+          port: 9443
+        - protocol: TCP
+          port: 10250
+{% endfor %}

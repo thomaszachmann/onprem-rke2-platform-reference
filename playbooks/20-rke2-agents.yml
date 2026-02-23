@@ -1,0 +1,9 @@
+---
+- name: Deploy RKE2 agent nodes
+  hosts: rke2_agents
+  become: true
+  vars_files:
+    - ../vault/secrets.yml
+  roles:
+    - rke2_common
+    - rke2_agent

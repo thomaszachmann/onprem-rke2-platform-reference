@@ -1,0 +1,5 @@
+---
+kube_vip_enabled: true
+# Set to the interface that carries the node IP on control-plane hosts.
+# Change this if your primary NIC is not eth0 (e.g. ens18, bond0).
+kube_vip_interface: "ens18"

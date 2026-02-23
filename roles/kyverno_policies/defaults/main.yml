@@ -1,0 +1,11 @@
+---
+kyverno_policies_mode: "Audit"
+kyverno_policies_excluded_namespaces:
+  - kube-system
+  - kube-public
+  - kube-node-lease
+  - kyverno
+  - cert-manager
+  - longhorn-system
+  - monitoring
+  - default

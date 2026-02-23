@@ -1,0 +1,5 @@
+---
+# Agent-specific overrides go here.
+# Example: set a node label for worker-only workloads
+# rke2_node_labels:
+#   - "node-role.kubernetes.io/worker=true"

@@ -1,0 +1,90 @@
+---
+- name: Template monitoring HelmChart manifest
+  ansible.builtin.template:
+    src: monitoring-helmchart.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/monitoring.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Ensure HelmChart CR exists
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      apply -f /var/lib/rancher/rke2/server/manifests/monitoring.yaml
+  register: helmchart_apply
+  changed_when: "'created' in helmchart_apply.stdout or 'configured' in helmchart_apply.stdout"
+
+- name: Wait for monitoring namespace to be created
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get namespace monitoring
+  register: ns_check
+  until: ns_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Wait for prometheus-operator Deployment to exist
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n monitoring get deployment monitoring-kube-prometheus-operator
+  register: operator_check
+  until: operator_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Wait for prometheus-operator Deployment rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n monitoring
+      rollout status deployment/monitoring-kube-prometheus-operator --timeout=300s
+  changed_when: false
+
+- name: Wait for Grafana Deployment rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n monitoring
+      rollout status deployment/monitoring-grafana --timeout=300s
+  changed_when: false
+
+- name: Wait for Prometheus StatefulSet rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n monitoring
+      rollout status statefulset/prometheus-monitoring-kube-prometheus-prometheus --timeout=300s
+  changed_when: false
+
+- name: Wait for Alertmanager StatefulSet rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n monitoring
+      rollout status statefulset/alertmanager-monitoring-kube-prometheus-alertmanager --timeout=300s
+  changed_when: false
+
+- name: Display monitoring pod placement
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n monitoring get pods -o wide
+  register: monitoring_pods
+  changed_when: false
+
+- name: Show monitoring pod status
+  ansible.builtin.debug:
+    msg: "{{ monitoring_pods.stdout_lines }}"

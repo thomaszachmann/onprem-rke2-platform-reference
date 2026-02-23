@@ -1,0 +1,22 @@
+# {{ ansible_managed }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: {{ cert_manager_letsencrypt_server }}
+    email: {{ cert_manager_letsencrypt_email }}
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+{% if cert_manager_duckdns_token | default('') | length > 0 %}
+      - dns01:
+          webhook:
+            groupName: acme.duckdns.org
+            solverName: duckdns
+{% else %}
+      - http01:
+          ingress:
+            ingressClassName: nginx
+{% endif %}

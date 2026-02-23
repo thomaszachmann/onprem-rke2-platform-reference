@@ -1,0 +1,6 @@
+---
+network_policies_namespaces:
+  - longhorn-system
+  - cert-manager
+  - kyverno
+  - monitoring

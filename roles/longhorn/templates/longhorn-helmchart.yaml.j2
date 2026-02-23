@@ -1,0 +1,40 @@
+# {{ ansible_managed }}
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: longhorn
+  namespace: default
+spec:
+  repo: {{ longhorn_chart_repo }}
+  chart: longhorn
+  version: {{ longhorn_version }}
+  targetNamespace: longhorn-system
+  createNamespace: true
+  failurePolicy: abort
+  valuesContent: |-
+    global:
+      nodeSelector:
+        {{ longhorn_node_selector_key }}: "{{ longhorn_node_selector_value }}"
+    persistence:
+      defaultClass: {{ longhorn_default_storageclass | lower }}
+      defaultClassReplicaCount: {{ longhorn_default_replica_count }}
+    longhornManager:
+      nodeSelector:
+        {{ longhorn_node_selector_key }}: "{{ longhorn_node_selector_value }}"
+    longhornUI:
+      nodeSelector:
+        {{ longhorn_node_selector_key }}: "{{ longhorn_node_selector_value }}"
+    longhornDriver:
+      nodeSelector:
+        {{ longhorn_node_selector_key }}: "{{ longhorn_node_selector_value }}"
+    longhornAdmissionWebhook:
+      nodeSelector:
+        {{ longhorn_node_selector_key }}: "{{ longhorn_node_selector_value }}"
+    longhornRecoveryBackend:
+      nodeSelector:
+        {{ longhorn_node_selector_key }}: "{{ longhorn_node_selector_value }}"
+    longhornConversionWebhook:
+      nodeSelector:
+        {{ longhorn_node_selector_key }}: "{{ longhorn_node_selector_value }}"
+    defaultSettings:
+      systemManagedComponentsNodeSelector: "{{ longhorn_node_selector_key }}:{{ longhorn_node_selector_value }}"

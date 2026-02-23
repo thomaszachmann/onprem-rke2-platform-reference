@@ -1,0 +1,8 @@
+---
+- name: Restart rke2-server
+  ansible.builtin.systemd:
+    name: rke2-server
+    state: restarted
+    daemon_reload: true
+  become: true
+  listen: rke2 config changed

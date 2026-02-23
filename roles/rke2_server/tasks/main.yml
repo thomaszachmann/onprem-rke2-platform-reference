@@ -1,0 +1,32 @@
+---
+- name: Enable and start rke2-server
+  ansible.builtin.systemd:
+    name: rke2-server
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+
+- name: Wait for API server to be ready
+  ansible.builtin.wait_for:
+    port: 6443
+    host: 127.0.0.1
+    timeout: 300
+    delay: 10
+
+- name: Create kubectl symlink
+  ansible.builtin.file:
+    src: /var/lib/rancher/rke2/bin/kubectl
+    dest: /usr/local/bin/kubectl
+    state: link
+    force: true
+  become: true
+  ignore_errors: true
+
+- name: Ensure KUBECONFIG is set in /root/.bashrc
+  ansible.builtin.lineinfile:
+    path: /root/.bashrc
+    regexp: '^export KUBECONFIG='
+    line: 'export KUBECONFIG=/etc/rancher/rke2/rke2.yaml'
+    state: present
+  become: true

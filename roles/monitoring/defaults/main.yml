@@ -1,0 +1,16 @@
+---
+monitoring_version: "72.6.2"
+monitoring_chart_repo: "https://prometheus-community.github.io/helm-charts"
+monitoring_grafana_admin_password: "admin"
+monitoring_grafana_ingress_enabled: false
+monitoring_grafana_ingress_host: ""
+monitoring_grafana_ingress_tls_enabled: false
+monitoring_retention: "14d"
+monitoring_retention_size: "10GB"
+monitoring_storage_enabled: true
+monitoring_storage_class: "longhorn"
+monitoring_storage_size: "5Gi"
+monitoring_alertmanager_replicas: 2
+monitoring_alertmanager_storage_size: "5Gi"
+monitoring_remote_write_url: ""
+monitoring_cluster_name: "rke2-prod"

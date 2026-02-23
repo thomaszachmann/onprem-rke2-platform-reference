@@ -1,0 +1,11 @@
+---
+- name: Deploy RKE2 server nodes (one at a time)
+  hosts: rke2_servers
+  become: true
+  serial: 1
+  vars_files:
+    - ../vault/secrets.yml
+  roles:
+    - rke2_common
+    - kube_vip
+    - rke2_server

@@ -1,0 +1,36 @@
+# {{ ansible_managed }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-ports
+  annotations:
+    policies.kyverno.io/title: Disallow Host Ports
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: {{ kyverno_policies_mode }}
+  background: true
+  rules:
+    - name: host-ports
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+{% for ns in kyverno_policies_excluded_namespaces %}
+                - {{ ns }}
+{% endfor %}
+      validate:
+        message: "Using hostPort is disallowed."
+        pattern:
+          spec:
+            =(initContainers):
+              - =(ports):
+                  - =(hostPort): "0"
+            containers:
+              - =(ports):
+                  - =(hostPort): "0"

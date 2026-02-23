@@ -1,0 +1,6 @@
+---
+- name: Bootstrap all nodes for Kubernetes
+  hosts: k8s
+  become: true
+  roles:
+    - bootstrap_linux

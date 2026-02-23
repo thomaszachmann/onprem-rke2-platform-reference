@@ -1,0 +1,36 @@
+# {{ ansible_managed }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-capability-escalation
+  annotations:
+    policies.kyverno.io/title: Disallow Privilege Escalation
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: {{ kyverno_policies_mode }}
+  background: true
+  rules:
+    - name: privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+{% for ns in kyverno_policies_excluded_namespaces %}
+                - {{ ns }}
+{% endfor %}
+      validate:
+        message: "Privilege escalation is disallowed. Set allowPrivilegeEscalation to false."
+        pattern:
+          spec:
+            =(initContainers):
+              - =(securityContext):
+                  =(allowPrivilegeEscalation): false
+            containers:
+              - =(securityContext):
+                  =(allowPrivilegeEscalation): false

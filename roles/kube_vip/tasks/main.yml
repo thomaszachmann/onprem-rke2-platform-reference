@@ -1,0 +1,30 @@
+---
+- name: Ensure RKE2 manifests directory exists
+  ansible.builtin.file:
+    path: /var/lib/rancher/rke2/server/manifests
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  become: true
+  when: kube_vip_enabled | default(false)
+
+- name: Download kube-vip RBAC manifest
+  ansible.builtin.get_url:
+    url: https://kube-vip.io/manifests/rbac.yaml
+    dest: /var/lib/rancher/rke2/server/manifests/kube-vip-rbac.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  when: kube_vip_enabled | default(false)
+
+- name: Template kube-vip DaemonSet manifest
+  ansible.builtin.template:
+    src: kube-vip.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  when: kube_vip_enabled | default(false)

@@ -1,0 +1,49 @@
+---
+- name: Create kyverno-policies manifest directory
+  ansible.builtin.file:
+    path: /var/lib/rancher/rke2/server/manifests/kyverno-policies
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Template Kyverno baseline policies
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "/var/lib/rancher/rke2/server/manifests/kyverno-policies/{{ item | basename | regex_replace('\\.j2$', '') }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop:
+    - disallow-privileged.yaml.j2
+    - disallow-host-namespaces.yaml.j2
+    - disallow-host-ports.yaml.j2
+    - disallow-default-namespace.yaml.j2
+    - disallow-capability-escalation.yaml.j2
+    - require-resource-limits.yaml.j2
+    - require-run-as-nonroot.yaml.j2
+
+- name: Wait for policies to be applied
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get clusterpolicy disallow-privileged-containers
+  register: policy_check
+  until: policy_check.rc == 0
+  retries: 15
+  delay: 5
+  changed_when: false
+
+- name: Display Kyverno policies
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get clusterpolicy
+  register: kyverno_policies
+  changed_when: false
+
+- name: Show Kyverno policy status
+  ansible.builtin.debug:
+    msg: "{{ kyverno_policies.stdout_lines }}"

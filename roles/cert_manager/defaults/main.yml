@@ -1,0 +1,9 @@
+---
+cert_manager_version: "v1.17.1"
+cert_manager_chart_repo: "https://charts.jetstack.io"
+cert_manager_letsencrypt_email: ""
+cert_manager_letsencrypt_server: "https://acme-v02.api.letsencrypt.org/directory"
+cert_manager_duckdns_token: ""
+cert_manager_duckdns_webhook_version: "1.2.4"
+cert_manager_ca_enabled: true
+cert_manager_ca_cn: "Homelab CA"

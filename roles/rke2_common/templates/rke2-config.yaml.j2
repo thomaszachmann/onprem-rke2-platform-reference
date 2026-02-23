@@ -1,0 +1,33 @@
+# {{ ansible_managed }}
+token: {{ rke2_cluster_token }}
+{% if inventory_hostname != groups['rke2_servers'][0] %}
+server: https://{{ rke2_api_fqdn }}:9345
+{% endif %}
+{% if inventory_hostname in groups['rke2_servers'] %}
+tls-san:
+  - {{ rke2_api_vip }}
+  - {{ rke2_api_fqdn }}
+  - {{ ansible_hostname }}
+  - {{ ansible_default_ipv4.address }}
+cni: {{ rke2_cni }}
+etcd-snapshot-schedule-cron: "{{ rke2_etcd_snapshot_schedule }}"
+etcd-snapshot-retention: {{ rke2_etcd_snapshot_retention }}
+etcd-snapshot-dir: {{ rke2_etcd_snapshot_dir }}
+{% if rke2_audit_enabled | default(false) | bool %}
+kube-apiserver-arg:
+  - "audit-policy-file=/etc/rancher/rke2/audit-policy.yaml"
+  - "audit-log-path=/var/lib/rancher/rke2/server/logs/audit.log"
+  - "audit-log-maxage={{ rke2_audit_log_maxage }}"
+  - "audit-log-maxbackup={{ rke2_audit_log_maxbackup }}"
+  - "audit-log-maxsize={{ rke2_audit_log_maxsize }}"
+{% endif %}
+{% if rke2_disable | length > 0 %}
+disable:
+{% for component in rke2_disable %}
+  - {{ component }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if rke2_node_ip is defined %}
+node-ip: {{ rke2_node_ip }}
+{% endif %}

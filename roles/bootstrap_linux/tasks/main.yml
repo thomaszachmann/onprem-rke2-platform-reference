@@ -1,0 +1,67 @@
+---
+- name: Install prerequisite packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - open-iscsi
+      - nfs-common
+      - ipvsadm
+      - jq
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+
+- name: Load kernel modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - br_netfilter
+    - overlay
+  become: true
+
+- name: Persist kernel modules across reboots
+  ansible.builtin.copy:
+    content: |
+      br_netfilter
+      overlay
+    dest: /etc/modules-load.d/kubernetes.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Set required sysctl parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-kubernetes.conf
+    reload: true
+    state: present
+  loop:
+    - { key: "net.bridge.bridge-nf-call-iptables", value: "1" }
+    - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+    - { key: "net.ipv4.ip_forward", value: "1" }
+  become: true
+
+- name: Disable swap
+  ansible.builtin.command: swapoff -a
+  changed_when: false
+  become: true
+
+- name: Remove swap entries from /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '\s+swap\s+'
+    state: absent
+  become: true
+
+- name: Enable and start iscsid
+  ansible.builtin.systemd:
+    name: iscsid
+    enabled: true
+    state: started
+  become: true
+  ignore_errors: true

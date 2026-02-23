@@ -1,0 +1,16 @@
+---
+- name: Enable and start rke2-agent
+  ansible.builtin.systemd:
+    name: rke2-agent
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+
+- name: Wait for kubelet to be ready
+  ansible.builtin.wait_for:
+    port: 10250
+    host: 127.0.0.1
+    timeout: 180
+    delay: 10
+  ignore_errors: true

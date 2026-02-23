@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: cert-manager-webhook-duckdns
+  namespace: default
+spec:
+  repo: https://ebrianne.github.io/cert-manager-webhook-duckdns
+  chart: cert-manager-webhook-duckdns
+  version: {{ cert_manager_duckdns_webhook_version }}
+  targetNamespace: cert-manager
+  failurePolicy: abort
+  valuesContent: |-
+    groupName: acme.duckdns.org
+    duckdns:
+      token: "{{ cert_manager_duckdns_token }}"
+    clusterIssuer:
+      email: "{{ cert_manager_letsencrypt_email }}"
+      production:
+        create: true
+      staging:
+        create: false
+    certManager:
+      namespace: cert-manager
+      serviceAccountName: cert-manager
+    logLevel: 2

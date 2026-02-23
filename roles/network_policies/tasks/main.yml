@@ -1,0 +1,76 @@
+---
+- name: Template default-deny-ingress NetworkPolicies
+  ansible.builtin.template:
+    src: default-deny-ingress.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/netpol-default-deny.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Template allow-intra-namespace NetworkPolicies
+  ansible.builtin.template:
+    src: allow-intra-namespace.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/netpol-allow-intra-namespace.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Template allow-ingress-nginx NetworkPolicies
+  ansible.builtin.template:
+    src: allow-ingress-nginx.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/netpol-allow-ingress-nginx.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Template allow-prometheus-scraping NetworkPolicies
+  ansible.builtin.template:
+    src: allow-prometheus-scraping.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/netpol-allow-prometheus-scraping.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Template allow-webhook NetworkPolicies
+  ansible.builtin.template:
+    src: allow-cert-manager-webhooks.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/netpol-allow-webhooks.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Template allow-longhorn-internal NetworkPolicies
+  ansible.builtin.template:
+    src: allow-longhorn-internal.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/netpol-allow-longhorn-internal.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Apply all NetworkPolicy manifests
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      apply
+      -f /var/lib/rancher/rke2/server/manifests/netpol-default-deny.yaml
+      -f /var/lib/rancher/rke2/server/manifests/netpol-allow-intra-namespace.yaml
+      -f /var/lib/rancher/rke2/server/manifests/netpol-allow-ingress-nginx.yaml
+      -f /var/lib/rancher/rke2/server/manifests/netpol-allow-prometheus-scraping.yaml
+      -f /var/lib/rancher/rke2/server/manifests/netpol-allow-webhooks.yaml
+      -f /var/lib/rancher/rke2/server/manifests/netpol-allow-longhorn-internal.yaml
+  register: netpol_apply
+  changed_when: "'created' in netpol_apply.stdout or 'configured' in netpol_apply.stdout"
+
+- name: Display NetworkPolicies
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get networkpolicies -A
+  register: netpol_list
+  changed_when: false
+
+- name: Show NetworkPolicies
+  ansible.builtin.debug:
+    msg: "{{ netpol_list.stdout_lines }}"

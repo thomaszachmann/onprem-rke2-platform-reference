@@ -1,0 +1,90 @@
+---
+- name: Get Kubernetes node names for worker hosts
+  ansible.builtin.shell:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}'
+  register: k8s_nodes_raw
+  changed_when: false
+
+- name: Build worker IP to Kubernetes node name mapping
+  ansible.builtin.set_fact:
+    worker_k8s_names: >-
+      {{ worker_k8s_names | default([]) +
+         (k8s_nodes_raw.stdout_lines
+          | select('search', hostvars[item].ansible_host)
+          | map('regex_replace', '\t.*', '')
+          | list) }}
+  loop: "{{ groups['rke2_agents'] }}"
+
+- name: Label worker nodes for Longhorn scheduling
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      label node {{ item }}
+      {{ longhorn_node_selector_key }}={{ longhorn_node_selector_value }}
+      --overwrite
+  loop: "{{ worker_k8s_names }}"
+  changed_when: true
+
+- name: Template Longhorn HelmChart manifest
+  ansible.builtin.template:
+    src: longhorn-helmchart.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/longhorn.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Template Longhorn Ingress manifest
+  ansible.builtin.template:
+    src: longhorn-ingress.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/longhorn-ingress.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  when: longhorn_ingress_enabled | default(false) | bool
+
+- name: Wait for longhorn-system namespace to be created
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get namespace longhorn-system
+  register: ns_check
+  until: ns_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Wait for longhorn-manager DaemonSet rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n longhorn-system
+      rollout status daemonset/longhorn-manager --timeout=300s
+  changed_when: false
+
+- name: Wait for longhorn-driver-deployer Deployment rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n longhorn-system
+      rollout status deployment/longhorn-driver-deployer --timeout=300s
+  changed_when: false
+
+- name: Display Longhorn pod placement
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n longhorn-system get pods -o wide
+  register: longhorn_pods
+  changed_when: false
+
+- name: Show Longhorn pod status
+  ansible.builtin.debug:
+    msg: "{{ longhorn_pods.stdout_lines }}"

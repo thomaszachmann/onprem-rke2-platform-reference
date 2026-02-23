@@ -1,0 +1,7 @@
+---
+- name: Deploy NetworkPolicies for namespace isolation
+  hosts: rke2-master-01
+  become: true
+  gather_facts: false
+  roles:
+    - network_policies

@@ -1,0 +1,9 @@
+---
+- name: Deploy cert-manager certificate management
+  hosts: rke2-master-01
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../vault/secrets.yml
+  roles:
+    - cert_manager

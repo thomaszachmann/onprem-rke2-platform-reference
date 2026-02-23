@@ -1,0 +1,35 @@
+---
+- name: Fetch and configure kubeconfig
+  hosts: rke2-master-01
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Read kubeconfig from first server
+      ansible.builtin.slurp:
+        src: /etc/rancher/rke2/rke2.yaml
+      register: kubeconfig_raw
+
+    - name: Ensure local artifacts directory exists
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/../artifacts"
+        state: directory
+        mode: "0750"
+      delegate_to: localhost
+      become: false
+
+    - name: Write kubeconfig with updated server endpoint
+      ansible.builtin.copy:
+        content: "{{ kubeconfig_raw.content | b64decode | regex_replace('https://127.0.0.1:6443', 'https://' + rke2_api_fqdn + ':6443') }}"
+        dest: "{{ playbook_dir }}/../artifacts/kubeconfig.yaml"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+
+    - name: Display usage instructions
+      ansible.builtin.debug:
+        msg:
+          - "Kubeconfig saved to artifacts/kubeconfig.yaml"
+          - ""
+          - "Usage:"
+          - "  export KUBECONFIG={{ playbook_dir }}/../artifacts/kubeconfig.yaml"
+          - "  kubectl get nodes -o wide"

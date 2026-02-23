@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: longhorn-ingress
+  namespace: longhorn-system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+{% if longhorn_ingress_tls_enabled | default(false) | bool %}
+    cert-manager.io/cluster-issuer: "{{ longhorn_ingress_tls_issuer | default('homelab-ca') }}"
+{% endif %}
+spec:
+  ingressClassName: nginx
+{% if longhorn_ingress_tls_enabled | default(false) | bool %}
+  tls:
+    - hosts:
+        - {{ longhorn_ingress_host }}
+      secretName: longhorn-ingress-tls
+{% endif %}
+  rules:
+    - host: {{ longhorn_ingress_host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: longhorn-frontend
+                port:
+                  number: 80

@@ -1,0 +1,22 @@
+# {{ ansible_managed }}
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: kyverno
+  namespace: default
+spec:
+  repo: {{ kyverno_chart_repo }}
+  chart: kyverno
+  version: {{ kyverno_version }}
+  targetNamespace: kyverno
+  createNamespace: true
+  failurePolicy: abort
+  valuesContent: |-
+    admissionController:
+      replicas: {{ kyverno_replica_count }}
+    backgroundController:
+      replicas: {{ [kyverno_replica_count, 2] | min }}
+    cleanupController:
+      replicas: {{ [kyverno_replica_count, 2] | min }}
+    reportsController:
+      replicas: {{ [kyverno_replica_count, 2] | min }}

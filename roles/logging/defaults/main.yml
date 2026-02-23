@@ -1,0 +1,5 @@
+---
+promtail_version: "6.16.6"
+promtail_chart_repo: "https://grafana.github.io/helm-charts"
+promtail_loki_url: ""
+promtail_cluster_name: "rke2-prod"

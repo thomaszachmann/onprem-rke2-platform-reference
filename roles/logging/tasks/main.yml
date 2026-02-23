@@ -1,0 +1,62 @@
+---
+- name: Template Promtail HelmChart manifest
+  ansible.builtin.template:
+    src: promtail-helmchart.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/promtail.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  when: promtail_loki_url | default('') | length > 0
+
+- name: Ensure HelmChart CR exists
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      apply -f /var/lib/rancher/rke2/server/manifests/promtail.yaml
+  register: helmchart_apply
+  changed_when: "'created' in helmchart_apply.stdout or 'configured' in helmchart_apply.stdout"
+  when: promtail_loki_url | default('') | length > 0
+
+- name: Wait for logging namespace to be created
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get namespace logging
+  register: ns_check
+  until: ns_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+  when: promtail_loki_url | default('') | length > 0
+
+- name: Wait for Promtail DaemonSet rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n logging
+      rollout status daemonset/promtail --timeout=300s
+  changed_when: false
+  when: promtail_loki_url | default('') | length > 0
+
+- name: Display Promtail pod placement
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n logging get pods -o wide
+  register: promtail_pods
+  changed_when: false
+  when: promtail_loki_url | default('') | length > 0
+
+- name: Show Promtail pod status
+  ansible.builtin.debug:
+    msg: "{{ promtail_pods.stdout_lines }}"
+  when: promtail_loki_url | default('') | length > 0
+
+- name: Skip Promtail deployment (no Loki URL configured)
+  ansible.builtin.debug:
+    msg: "Promtail skipped — set promtail_loki_url in inventory/group_vars/all.yml to enable"
+  when: promtail_loki_url | default('') | length == 0

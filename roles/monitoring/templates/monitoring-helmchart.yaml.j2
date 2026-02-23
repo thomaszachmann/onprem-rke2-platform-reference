@@ -1,0 +1,108 @@
+# {{ ansible_managed }}
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: monitoring
+  namespace: default
+spec:
+  repo: {{ monitoring_chart_repo }}
+  chart: kube-prometheus-stack
+  version: {{ monitoring_version }}
+  targetNamespace: monitoring
+  createNamespace: true
+  failurePolicy: abort
+  valuesContent: |-
+    grafana:
+      adminPassword: "{{ monitoring_grafana_admin_password }}"
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      persistence:
+        enabled: {{ monitoring_storage_enabled | lower }}
+        storageClassName: {{ monitoring_storage_class }}
+        size: 5Gi
+{% if monitoring_grafana_ingress_enabled | bool %}
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        hosts:
+          - {{ monitoring_grafana_ingress_host }}
+{% if monitoring_grafana_ingress_tls_enabled | bool %}
+        annotations:
+          cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        tls:
+          - hosts:
+              - {{ monitoring_grafana_ingress_host }}
+            secretName: grafana-ingress-tls
+{% endif %}
+{% endif %}
+    prometheus:
+      prometheusSpec:
+        nodeSelector:
+          node-role.kubernetes.io/worker: "true"
+        retention: {{ monitoring_retention }}
+        retentionSize: {{ monitoring_retention_size }}
+{% if monitoring_storage_enabled | bool %}
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: {{ monitoring_storage_class }}
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: {{ monitoring_storage_size }}
+{% endif %}
+{% if monitoring_remote_write_url | default('') | length > 0 %}
+        remoteWrite:
+          - url: "{{ monitoring_remote_write_url }}"
+            writeRelabelConfigs:
+              - sourceLabels: [__name__]
+                regex: "(.*)"
+                targetLabel: cluster
+                replacement: "{{ monitoring_cluster_name }}"
+                action: replace
+{% endif %}
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 2Gi
+    alertmanager:
+      alertmanagerSpec:
+        nodeSelector:
+          node-role.kubernetes.io/worker: "true"
+        replicas: {{ monitoring_alertmanager_replicas }}
+{% if monitoring_storage_enabled | bool %}
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: {{ monitoring_storage_class }}
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: {{ monitoring_alertmanager_storage_size }}
+{% endif %}
+    prometheusOperator:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+    kube-state-metrics:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+    kubeEtcd:
+      service:
+        targetPort: 2381
+    kubeProxy:
+      enabled: false
+    kubeControllerManager:
+      service:
+        targetPort: 10257
+      serviceMonitor:
+        https: true
+        insecureSkipVerify: true
+    kubeScheduler:
+      service:
+        targetPort: 10259
+      serviceMonitor:
+        https: true
+        insecureSkipVerify: true

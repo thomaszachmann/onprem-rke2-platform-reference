@@ -1,0 +1,79 @@
+# {{ ansible_managed }}
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  # Do not log requests to the following
+  - level: None
+    users: ["system:kube-proxy"]
+    verbs: ["watch"]
+    resources:
+      - group: ""
+        resources: ["endpoints", "services", "services/status"]
+
+  - level: None
+    users: ["system:apiserver"]
+    verbs: ["get"]
+    resources:
+      - group: ""
+        resources: ["namespaces", "namespaces/status", "namespaces/finalize"]
+
+  # Do not log HPA fetches
+  - level: None
+    users: ["system:kube-controller-manager"]
+    verbs: ["get", "list"]
+    resources:
+      - group: "metrics.k8s.io"
+
+  # Do not log watch requests by nodes
+  - level: None
+    userGroups: ["system:nodes"]
+    verbs: ["get", "watch"]
+    resources:
+      - group: ""
+        resources: ["nodes", "nodes/status"]
+
+  # Do not log healthz/readyz/livez
+  - level: None
+    nonResourceURLs:
+      - "/healthz*"
+      - "/readyz*"
+      - "/livez*"
+      - "/version"
+
+  # Do not log events
+  - level: None
+    resources:
+      - group: ""
+        resources: ["events"]
+
+  # Log secret access at Metadata level (do not log request/response body)
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["secrets", "configmaps", "tokenreviews"]
+
+  # Log authentication/authorization at Metadata level
+  - level: Metadata
+    resources:
+      - group: "authentication.k8s.io"
+      - group: "authorization.k8s.io"
+
+  # Log changes to important resources at RequestResponse level
+  - level: RequestResponse
+    verbs: ["create", "update", "patch", "delete", "deletecollection"]
+    resources:
+      - group: ""
+        resources: ["pods", "services", "namespaces", "serviceaccounts"]
+      - group: "apps"
+        resources: ["deployments", "daemonsets", "statefulsets", "replicasets"]
+      - group: "batch"
+        resources: ["jobs", "cronjobs"]
+      - group: "rbac.authorization.k8s.io"
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+      - group: "networking.k8s.io"
+        resources: ["ingresses", "networkpolicies"]
+
+  # Log everything else at Metadata level
+  - level: Metadata
+    omitStages:
+      - RequestReceived

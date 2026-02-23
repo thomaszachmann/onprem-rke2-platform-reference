@@ -1,0 +1,9 @@
+---
+longhorn_version: "v1.7.2"
+longhorn_chart_repo: "https://charts.longhorn.io"
+longhorn_default_storageclass: true
+longhorn_default_replica_count: 3
+longhorn_node_selector_key: "node-role.kubernetes.io/worker"
+longhorn_node_selector_value: "true"
+longhorn_ingress_enabled: true
+longhorn_ingress_host: "longhorn.procilon.duckdns.org"

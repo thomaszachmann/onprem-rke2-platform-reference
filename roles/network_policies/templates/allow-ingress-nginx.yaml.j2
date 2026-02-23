@@ -1,0 +1,22 @@
+# {{ ansible_managed }}
+# Allow traffic from rke2-ingress-nginx (runs in kube-system) to namespaces with Ingress resources
+{% for ns in ['longhorn-system', 'monitoring'] %}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-ingress-nginx
+  namespace: {{ ns }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: rke2-ingress-nginx
+{% endfor %}

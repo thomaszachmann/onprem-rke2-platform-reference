@@ -1,0 +1,21 @@
+# {{ ansible_managed }}
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: cert-manager
+  namespace: default
+spec:
+  repo: {{ cert_manager_chart_repo }}
+  chart: cert-manager
+  version: {{ cert_manager_version }}
+  targetNamespace: cert-manager
+  createNamespace: true
+  failurePolicy: abort
+  valuesContent: |-
+    crds:
+      enabled: true
+    replicaCount: 2
+    webhook:
+      replicaCount: 2
+    cainjector:
+      replicaCount: 2

@@ -1,0 +1,7 @@
+---
+- name: Deploy monitoring stack (Prometheus + Grafana)
+  hosts: rke2-master-01
+  become: true
+  gather_facts: false
+  roles:
+    - monitoring

@@ -1,0 +1,51 @@
+---
+- name: Template Kyverno HelmChart manifest
+  ansible.builtin.template:
+    src: kyverno-helmchart.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/kyverno.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Wait for kyverno namespace to be created
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get namespace kyverno
+  register: ns_check
+  until: ns_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Wait for kyverno-admission-controller Deployment rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n kyverno
+      rollout status deployment/kyverno-admission-controller --timeout=300s
+  changed_when: false
+
+- name: Wait for kyverno-background-controller Deployment rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n kyverno
+      rollout status deployment/kyverno-background-controller --timeout=300s
+  changed_when: false
+
+- name: Display Kyverno pod placement
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n kyverno get pods -o wide
+  register: kyverno_pods
+  changed_when: false
+
+- name: Show Kyverno pod status
+  ansible.builtin.debug:
+    msg: "{{ kyverno_pods.stdout_lines }}"

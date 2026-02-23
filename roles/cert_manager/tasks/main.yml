@@ -1,0 +1,134 @@
+---
+- name: Template cert-manager HelmChart manifest
+  ansible.builtin.template:
+    src: cert-manager-helmchart.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/cert-manager.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Wait for cert-manager namespace to be created
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get namespace cert-manager
+  register: ns_check
+  until: ns_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Wait for cert-manager Deployment rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n cert-manager
+      rollout status deployment/cert-manager --timeout=300s
+  changed_when: false
+
+- name: Wait for cert-manager-webhook Deployment rollout
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n cert-manager
+      rollout status deployment/cert-manager-webhook --timeout=300s
+  changed_when: false
+
+- name: Wait for cert-manager webhook to be ready
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n cert-manager get secret cert-manager-webhook-ca
+  register: webhook_ca
+  until: webhook_ca.rc == 0
+  retries: 30
+  delay: 5
+  changed_when: false
+
+# --- Self-signed CA ClusterIssuer (for homelab / internal TLS) ---
+
+- name: Template self-signed CA ClusterIssuer
+  ansible.builtin.template:
+    src: clusterissuer-selfsigned-ca.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/clusterissuer-selfsigned-ca.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  when: cert_manager_ca_enabled | default(false) | bool
+
+- name: Apply self-signed CA ClusterIssuer
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      apply -f /var/lib/rancher/rke2/server/manifests/clusterissuer-selfsigned-ca.yaml
+  register: ca_apply
+  changed_when: "'created' in ca_apply.stdout or 'configured' in ca_apply.stdout"
+  when: cert_manager_ca_enabled | default(false) | bool
+
+- name: Wait for homelab-ca ClusterIssuer to be ready
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get clusterissuer homelab-ca
+      -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: ca_issuer_ready
+  until: ca_issuer_ready.stdout == "True"
+  retries: 30
+  delay: 5
+  changed_when: false
+  when: cert_manager_ca_enabled | default(false) | bool
+
+# --- Let's Encrypt ClusterIssuer (for public domains) ---
+
+- name: Template Let's Encrypt ClusterIssuer
+  ansible.builtin.template:
+    src: clusterissuer-letsencrypt.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/clusterissuer-letsencrypt.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  when: cert_manager_letsencrypt_email | default('') | length > 0
+
+- name: Apply Let's Encrypt ClusterIssuer
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      apply -f /var/lib/rancher/rke2/server/manifests/clusterissuer-letsencrypt.yaml
+  register: issuer_apply
+  changed_when: "'created' in issuer_apply.stdout or 'configured' in issuer_apply.stdout"
+  when: cert_manager_letsencrypt_email | default('') | length > 0
+
+# --- Status ---
+
+- name: Display cert-manager pod placement
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      -n cert-manager get pods -o wide
+  register: cert_manager_pods
+  changed_when: false
+
+- name: Show cert-manager pod status
+  ansible.builtin.debug:
+    msg: "{{ cert_manager_pods.stdout_lines }}"
+
+- name: Display ClusterIssuers
+  ansible.builtin.command:
+    cmd: >-
+      /var/lib/rancher/rke2/bin/kubectl
+      --kubeconfig /etc/rancher/rke2/rke2.yaml
+      get clusterissuers
+  register: cluster_issuers
+  changed_when: false
+
+- name: Show ClusterIssuers
+  ansible.builtin.debug:
+    msg: "{{ cluster_issuers.stdout_lines }}"

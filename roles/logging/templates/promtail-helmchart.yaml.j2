@@ -1,0 +1,45 @@
+# {{ ansible_managed }}
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: promtail
+  namespace: default
+spec:
+  repo: {{ promtail_chart_repo }}
+  chart: promtail
+  version: {{ promtail_version }}
+  targetNamespace: logging
+  createNamespace: true
+  failurePolicy: abort
+  valuesContent: |-
+    config:
+      clients:
+        - url: "{{ promtail_loki_url }}"
+          external_labels:
+            cluster: "{{ promtail_cluster_name }}"
+      snippets:
+        pipelineStages:
+          - cri: {}
+          - labeldrop:
+              - filename
+    extraVolumes:
+      - name: audit-log
+        hostPath:
+          path: /var/lib/rancher/rke2/server/logs
+          type: DirectoryOrCreate
+    extraVolumeMounts:
+      - name: audit-log
+        mountPath: /var/log/rke2-audit
+        readOnly: true
+    extraScrapeConfigs: |
+      - job_name: rke2-audit
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: rke2-audit
+              cluster: {{ promtail_cluster_name }}
+              __path__: /var/log/rke2-audit/audit.log
+    tolerations:
+      - operator: Exists
+        effect: NoSchedule

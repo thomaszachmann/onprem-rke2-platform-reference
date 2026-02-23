@@ -1,0 +1,50 @@
+---
+# SSH
+ansible_user: ubuntu
+
+# RKE2
+rke2_version: "v1.31.4+rke2r1"
+rke2_api_vip: "172.16.0.240"
+rke2_api_fqdn: "172-16-0-240.nip.io"
+rke2_cni: "canal"
+rke2_disable: []
+rke2_etcd_snapshot_schedule: "0 */6 * * *"
+rke2_etcd_snapshot_retention: 56
+rke2_etcd_snapshot_dir: "/var/lib/rancher/rke2/server/db/snapshots"
+rke2_audit_enabled: true
+rke2_audit_log_maxage: 30
+rke2_audit_log_maxbackup: 10
+rke2_audit_log_maxsize: 100
+# rke2_disable:
+#   - rke2-ingress-nginx
+
+# kube-vip
+kube_vip_image: "ghcr.io/kube-vip/kube-vip:v0.8.2"
+
+# Longhorn storage
+longhorn_version: "v1.7.2"
+
+# cert-manager
+cert_manager_version: "v1.17.1"
+cert_manager_ca_enabled: true
+cert_manager_ca_cn: "Homelab CA"
+
+# Kyverno
+kyverno_version: "3.3.4"
+kyverno_policies_mode: "Enforce"
+
+# Monitoring
+monitoring_version: "72.6.2"
+monitoring_remote_write_url: "https://prometheus.procilon.duckdns.org/api/v1/write"
+monitoring_cluster_name: "rke2-prod"
+
+# Logging
+promtail_loki_url: ""
+promtail_cluster_name: "rke2-prod"
+
+# Longhorn Ingress
+longhorn_ingress_host: "longhorn.procilon.duckdns.org"
+longhorn_ingress_tls_enabled: false
+
+# Post-install
+kubeconfig_local_path: "./artifacts/kubeconfig.yaml"

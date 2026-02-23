@@ -1,0 +1,7 @@
+---
+- name: Deploy Kyverno policy engine
+  hosts: rke2-master-01
+  become: true
+  gather_facts: false
+  roles:
+    - kyverno

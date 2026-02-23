@@ -1,0 +1,29 @@
+# {{ ansible_managed }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-default-namespace
+  annotations:
+    policies.kyverno.io/title: Disallow Default Namespace
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+spec:
+  validationFailureAction: {{ kyverno_policies_mode }}
+  background: true
+  rules:
+    - name: validate-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Job
+                - CronJob
+      validate:
+        message: "Resources must not be deployed to the 'default' namespace."
+        pattern:
+          metadata:
+            namespace: "!default"
